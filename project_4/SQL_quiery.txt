@@ -1,0 +1,335 @@
+4. Изучаем закономерности в данных
+
+Задание 4.1
+База данных содержит список аэропортов практически всех крупных городов России. В большинстве городов есть только один аэропорт. Исключение составляет:
+
+SELECT airport.city
+  FROM dst_project.airports AS airport
+ GROUP BY airport.city
+HAVING count(airport.airport_code) > 1;
+
+>>Ulyanovsk
+>>Moscow
+
+Задание 4.2
+Вопрос 1. Таблица рейсов содержит всю информацию о прошлых, текущих и запланированных рейсах. Сколько всего статусов для рейсов определено в таблице?
+
+SELECT count(distinct flight.status)
+  FROM dst_project.flights AS flight;
+
+>>6
+
+Вопрос 2. Какое количество самолетов находятся в воздухе на момент среза в базе (статус рейса «самолёт уже вылетел и находится в воздухе»).
+
+SELECT count(flight.status)
+  FROM dst_project.flights AS flight
+ WHERE flight.status = 'Departed';
+
+>>58
+
+Вопрос 3. Места определяют схему салона каждой модели. Сколько мест имеет самолет модели (Boeing 777-300)?
+
+SELECT count(*)
+  FROM dst_project.seats AS s
+  JOIN dst_project.aircrafts AS a
+       ON s.aircraft_code = a.aircraft_code
+ WHERE a.model = 'Boeing 777-300';
+
+>>402
+
+Вопрос 4. Сколько состоявшихся (фактических) рейсов было совершено между 1 апреля 2017 года и 1 сентября 2017 года? Здесь и далее состоявшийся рейс означает, что он не отменён, и самолёт прибыл в пункт назначения.
+
+SELECT count(f.arrival_airport)
+  FROM dst_project.flights AS f
+ WHERE (f.actual_arrival BETWEEN '2017-04-01' AND '2017-09-01')
+   AND (f.status = 'Arrived');
+
+>>74227
+
+Задание 4.3
+Вопрос 1. Сколько всего рейсов было отменено по данным базы?
+SELECT count(*)
+  FROM dst_project.flights AS f
+ WHERE f.status = 'Cancelled';
+ 
+>>437
+
+Вопрос 2. Сколько самолетов моделей типа Boeing, Sukhoi Superjet, Airbus находится в базе авиаперевозок?
+
+  WITH b AS
+       (SELECT count(a.aircraft_code) AS boeing_count
+          FROM dst_project.aircrafts a
+         WHERE a.model LIKE 'Boeing%'),
+       s AS
+       (SELECT count(a.aircraft_code) AS sukhoi_count
+          FROM dst_project.aircrafts a
+         WHERE a.model LIKE 'Sukhoi Superjet%'),
+       a1 AS
+       (SELECT count(a.aircraft_code) AS airbus_count
+          FROM dst_project.aircrafts a
+         WHERE a.model LIKE 'Airbus%')
+SELECT b.boeing_count,
+       s.sukhoi_count,
+       a1.airbus_count
+  FROM b, s, a1;
+
+>>3,1,3
+
+Вопрос 3. В какой части (частях) света находится больше аэропортов?
+
+Сначала посмотрим, какие уникальные части света есть в базе данных:
+
+SELECT DISTINCT split_part(a.timezone, '/', 1)
+  FROM dst_project.airports AS a;
+
+>>Europe
+>>Asia
+
+Значит, считаем по Europe и по Asia
+
+ WITH e AS
+       (SELECT count(a.airport_code) AS europe_count
+          FROM dst_project.airports AS a
+         WHERE a.timezone LIKE 'Europe%'),
+       a1 AS
+       (SELECT count(a.airport_code) AS asia_count
+          FROM dst_project.airports AS a
+         WHERE a.timezone LIKE 'Asia%')
+SELECT e.europe_count,
+       a1.asia_count
+  FROM e, a1;
+
+>>52, 52 Europe, Asia
+
+Вопрос 4. У какого рейса была самая большая задержка прибытия за все время сбора данных? Введите id рейса (flight_id)
+
+SELECT (f.actual_arrival - f.scheduled_arrival) AS delay,
+       f.flight_id
+  FROM dst_project.flights AS f
+ WHERE (f.actual_arrival IS NOT NULL) 
+   AND (f.actual_arrival > f.scheduled_arrival)
+ ORDER BY 1 desc
+ LIMIT 1;
+
+>>157571          0 years 0 mons 0 days 5 hours 7 mins 0.00 secs
+
+Задание 4.4
+Вопрос 1. Когда был запланирован самый первый вылет, сохраненный в базе данных?
+
+SELECT min(f.scheduled_departure)
+  FROM dst_project.flights AS f;
+
+>>August 14, 2016, 11:45 PM
+
+Вопрос 2. Сколько минут составляет запланированное время полета в самом длительном рейсе?
+
+SELECT date_part('hour', f.scheduled_arrival - f.scheduled_departure) * 60 
+       + date_part('minute', f.scheduled_arrival - f.scheduled_departure)
+  FROM dst_project.flights AS f
+ ORDER BY 1 desc
+ LIMIT 1;
+
+>>530
+
+Вопрос 3. Между какими аэропортами пролегает самый длительный по времени запланированный рейс?
+
+SELECT f.scheduled_arrival - f.scheduled_departure,
+       f.departure_airport,
+       f.arrival_airport
+  FROM dst_project.flights AS f
+ ORDER BY 1 desc
+ LIMIT 1;
+
+>>DME
+>>UUS
+
+Вопрос 4. Сколько составляет средняя дальность полета среди всех самолетов в минутах? Секунды округляются в меньшую сторону (отбрасываются до минут).
+
+SELECT avg(date_part('hour', f.scheduled_arrival - f.scheduled_departure) * 60 
+       + date_part('minute', f.scheduled_arrival - f.scheduled_departure))
+  FROM dst_project.flights AS f;
+
+>>128.36
+
+Задание 4.5
+Вопрос 1. Мест какого класса у SU9 больше всего?
+
+SELECT count(s.seat_no) AS seat_count,
+       s.fare_conditions AS seat_class
+  FROM dst_project.seats AS s
+ WHERE s.aircraft_code = 'SU9'
+ GROUP BY s.fare_conditions
+ ORDER BY 1 desc
+ LIMIT 1;
+
+>>85
+>>Economy
+
+Вопрос 2. Какую самую минимальную стоимость составило бронирование за всю историю?
+
+SELECT b.total_amount
+FROM dst_project.bookings AS b
+ORDER BY b.total_amount ASC
+LIMIT 1;
+
+>>3400
+
+Вопрос 3. Какой номер места был у пассажира с id = 4313 788533?
+
+SELECT b.seat_no
+FROM dst_project.tickets AS t
+JOIN dst_project.boarding_passes AS b ON t.ticket_no = b.ticket_no
+AND t.passenger_id = '4313 788533';
+
+>>2A
+
+5. Предварительный анализ
+
+Задание 5.1
+Вопрос 1. Анапа — курортный город на юге России. Сколько рейсов прибыло в Анапу за 2017 год?
+
+SELECT count(*)
+FROM dst_project.flights
+WHERE arrival_airport = 'AAQ'
+  AND date_part('year', actual_arrival) = 2017
+  AND status = 'Arrived';
+
+>>486
+
+Вопрос 2. Сколько рейсов из Анапы вылетело зимой 2017 года?
+
+SELECT count(*)
+FROM dst_project.flights
+WHERE departure_airport = 'AAQ'
+  AND (date_trunc('month', scheduled_departure) in ('2017-01-01',
+                                                    '2017-02-01',
+                                                    '2017-12-01'))
+  AND status not in ('Cancelled');
+
+>>127
+
+Вопрос 3. Посчитайте количество отмененных рейсов из Анапы за все время.
+
+SELECT count(*)
+FROM dst_project.flights
+WHERE departure_airport = 'AAQ'
+  AND status = 'Cancelled';
+
+>>1
+
+Вопрос 4. Сколько рейсов из Анапы не летают в Москву?
+
+SELECT count(*)
+FROM dst_project.flights
+WHERE departure_airport = 'AAQ'
+  AND arrival_airport not in ('SVO',
+                              'VKO',
+                              'DME');
+
+>>453
+
+Вопрос 5. Какая модель самолета летящего на рейсах из Анапы имеет больше всего мест?
+
+SELECT count(DISTINCT s.seat_no),
+       a.model
+FROM dst_project.flights AS f
+JOIN dst_project.aircrafts AS a ON f.aircraft_code = a.aircraft_code
+JOIN dst_project.seats AS s ON f.aircraft_code = s.aircraft_code
+WHERE departure_airport = 'AAQ'
+GROUP BY a.model
+ORDER BY 1 DESC
+LIMIT 1;
+
+>>Boeing 737-300
+
+6. Переходим к реальной аналитике
+
+ЗАДАЧА
+Напомним, что вам предстоит выяснить, от каких самых малоприбыльных рейсов из Анапы мы можем отказаться в зимнее время. Вы не знаете, по каким критериям ваше руководство будет отбирать рейсы, поэтому решаете собрать как можно больше информации, содержащейся в вашей базе, в один датасет.
+Исходя из того, что прибыльность рейса — это разница между доходом от продаж билетов и расходом на полет, соберите такой датасет, который позволит оценить эти цифры.
+Самая простая модель оценки прибыльности: стоимость билетов - стоимость топлива на рейс (для оценки последнего вам необходим километраж рейса или длительность полета), но вы можете предложить другую модель.
+Ваш датасет должен обязательно включать id рейса и города вылета (Анапа) и прилета. Он также может включать такие данные, как модель самолёта и его характеристики, суммарную стоимость всех билетов на рейсе, затраченное время в полёте и прочее — на ваше усмотрение.
+Важно! Не все данные, необходимые для решения задачи, есть в вашей базе. Соберите всё, что есть — остальное дополнят специалисты, которые будут проводить анализ.
+Чтобы получить необходимую предварительную информацию о рейсах, выполните запрос:
+
+SELECT *
+FROM dst_project.flights
+WHERE departure_airport = 'AAQ'
+  AND (date_trunc('month', scheduled_departure) in ('2017-01-01','2017-02-01', '2017-12-01'))
+  AND status not in ('Cancelled');
+
+Вы получите состоявшихся рейсов в 2017 году за зимний период.
+
+7. Итоговый запрос
+
+WITH d AS    -- определяем длительность перелета, мин
+  (SELECT date_part('hour', fl.actual_arrival - fl.actual_departure) * 60 + 
+          date_part('minute', fl.actual_arrival - fl.actual_departure) AS flight_duration,
+          fl.flight_id AS flight_id
+   FROM dst_project.flights AS fl),
+   
+     pc AS    -- определяем пассажировместимость по моделям самолетов, чел
+  (SELECT count(DISTINCT s.seat_no) AS passenger_capacity,
+          a.model
+   FROM dst_project.flights AS f
+   JOIN dst_project.aircrafts AS a ON f.aircraft_code = a.aircraft_code
+   JOIN dst_project.seats AS s ON f.aircraft_code = s.aircraft_code
+   WHERE departure_airport = 'AAQ'
+   GROUP BY a.model),
+   
+     ap AS    -- определяем фактическое число пассажиров по регистрации на рейс, чел. 
+  (SELECT max(bp.boarding_no) AS actually_passengers,
+          bp.flight_id AS flight_id
+   FROM dst_project.boarding_passes AS bp
+   GROUP BY bp.flight_id)
+   
+SELECT fl.flight_id,
+       fl.departure_airport,
+       fl.arrival_airport,
+       d.flight_duration,
+       ac.model,
+       pc.passenger_capacity,
+       ap.actually_passengers,
+       sum(tf.amount) AS flight_income,  -- выводим доход от продажи билетов на рейс, руб.
+       /* далее определяем затраты на топливо для каждого рейса по формуле:
+          продолжительность полета (ч)*удельный расход топлива (т/ч)*цена тонны топлива (руб).
+          Данные, которых не было в базе (взяты из открытых источников):
+            для 'Boeing 737-300' удельный расход топлива = 2.4 т/ч; 
+            источник - https://ru.wikipedia.org/wiki/Boeing_737;
+            для 'Sukhoi Superjet-100' удельный расход топлива = 1.7 т/ч; 
+            источник - https://ru.wikipedia.org/wiki/Sukhoi_Superjet_100;
+            цена тонны топлива 47101 руб. (среднняя цена на январь 2017 по данным
+            Федерального агенства воздушного транспорта + НДС 15.25%). Источник - 
+            https://favt.gov.ru/dejatelnost-ajeroporty-i-ajerodromy-ceny-na-aviagsm/?id=7329
+       */
+       CASE
+           WHEN ac.model = 'Boeing 737-300' THEN d.flight_duration/60 * 2.400 * 47101
+           WHEN ac.model = 'Sukhoi Superjet-100' THEN d.flight_duration/60 * 1.700 * 47101
+       END AS fuel_cost    -- затраты на топливо по рейсам, руб.
+FROM dst_project.flights AS fl
+JOIN dst_project.aircrafts AS ac ON fl.aircraft_code = ac. aircraft_code
+JOIN dst_project.ticket_flights AS tf ON fl.flight_id = tf.flight_id
+JOIN d ON fl.flight_id = d.flight_id
+JOIN pc ON ac.model = pc.model
+JOIN ap ON fl.flight_id = ap.flight_id
+WHERE fl.departure_airport = 'AAQ'
+  AND (date_trunc('month', scheduled_departure) in ('2017-01-01',
+                                                    '2017-02-01',
+                                                    '2017-12-01'))
+  AND status not in ('Cancelled')
+GROUP BY fl.flight_id,
+         fuel_cost,
+         ac.model,
+         fl.departure_airport,
+         fl.arrival_airport,
+         d.flight_duration,
+         pc.passenger_capacity,
+         ap.actually_passengers;
+
+
+
+8. Получившийся датасет сохранен в файл project_4_data.csv
+
+9. Дополнительные исследования приведены в Jupyter ноутбуке project_4_advanced.ipynb
+
+
