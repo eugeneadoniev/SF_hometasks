@@ -1,94 +1,44 @@
-Проект 4. Авиарейсы без потерь
+Flights without losses. SQL queries and analysis
 
-1. ПРОБЛЕМА
+1. PROBLEM
 
-Вы - аналитик в региональном филиале авиакомпании в Анапе. Вы узнаёте, что компания переживает не лучшие времена каждую зиму: не все рейсы из Анапы окупаются в «низкий сезон». При этом есть направления, которые потенциально могут быть прибыльными, но у компании не хватает самолетов для их запуска. И вашей первой задачей в новой должности станет помощь в поиске самых малоприбыльных рейсов.
-Региональное руководство не принимает решений об отмене рейсов, а только передаёт информацию о невыгодных перелетах в центральный филиал. Однако данных в компании накопилось столько, что никто не может вытащить из базы нужную информацию. Именно вам предстоит разобраться с базой и достать из неё нужные данные. А выводы затем предстоит представить перед высшим руководством.
-У Вас есть доступ к базе данных всех филиалов авиакомпании. Необходимо предоставить такую таблицу, которая позволит оптимизировать зимние авиарейсы Анапы.
+You are an analyst at the regional branch of the airline in Anapa. You learn that the company is going through hard times every winter: not all flights from Anapa pay off in the "low season". At the same time, there are directions that could potentially be profitable, but the company does not have enough aircraft to launch them. And your first task in your new position will be to help you find the lowest-profit flights.
+The regional leadership does not make decisions about canceling flights, but only transfers information about unprofitable flights to the central branch. However, the company has accumulated so much data that no one can pull the necessary information from the database. It is you who have to deal with the database and get the necessary data from it. And the conclusions will then have to be presented to senior management.
+You have access to the database of all branches of the airline. It is necessary to provide such a table that will optimize the winter flights of Anapa.
 
-2. ЦЕЛЬ ПРОЕКТА
-Определить наименее прибыльные зимние авиарейсы из Анапы в 2017 году.
-Для достижения поставленной цели необходимо:
-- сформировать SQL запрос к базе данных;
-- на основании полученного датасета определить наименее прибыльные авиарейсы.
+2. PURPOSE OF THE PROJECT
+Identify the least profitable winter flights from Anapa in 2017.
+To achieve this goal, you must:
+- form a SQL query to the database;
+- based on the received dataset, determine the least profitable flights.
 
-3. ДИАГРАММА СХЕМЫ ДАННЫХ
+3. DIAGRAM DIAGRAM
 
-База данных находится в учебном Metabase и называется dst_project.
-Ссылка на базу данных: http://sql.skillfactory.ru:3000/
+The database is located in the tutorial Metabase and is named dst_project.
+Database link: http://sql.skillfactory.ru:3000/
 
-Основной сущностью является таблица бронирований (bookings).
-В одно бронирование можно включить несколько пассажиров, каждому из которых выписывается отдельный билет (tickets). Билет имеет уникальный номер и содержит информацию о пассажире. Как таковой пассажир не является отдельной сущностью. Как имя, так и номер документа пассажира могут меняться с течением времени, так что невозможно однозначно найти все билеты одного человека; для простоты можно считать, что все пассажиры уникальны.
-Билет включает один или несколько перелетов (ticket_flights). Несколько перелетов могут входить в билет в случаях, когда нет прямого рейса, соединяющего пункты отправления и назначения (полёт с пересадками), либо когда билет взят «туда и обратно». В схеме данных нет жёсткого ограничения, но предполагается, что все билеты в одном бронировании имеют одинаковый набор перелетов.
-Каждый рейс (flights) следует из одного аэропорта (airports) в другой. Рейсы с одним номером имеют одинаковые пункты вылета и назначения, но будут отличаться датой отправления.
-При регистрации на рейс пассажиру выдаётся посадочный талон (boarding_passes), в котором указано место в самолете. Пассажир может зарегистрироваться только на тот рейс, который есть у него в билете. Комбинация рейса и места в самолете должна быть уникальной, чтобы не допустить выдачу двух посадочных талонов на одно место.
-Количество мест (seats) в самолете и их распределение по классам обслуживания зависит от модели самолета (aircrafts), выполняющего рейс. Предполагается, что каждая модель самолета имеет только одну компоновку салона. Схема данных не контролирует, что места в посадочных талонах соответствуют имеющимся в самолете (такая проверка может быть сделана с использованием табличных триггеров или в приложении).
+The main entity is the bookings table.
+Several passengers can be included in one booking, each of whom is issued a separate ticket (tickets). The ticket has a unique number and contains information about the passenger. As such, the passenger is not a separate entity. Both the name and the number of the passenger's document can change over time, so that it is impossible to unambiguously find all the tickets of one person; for simplicity, we can assume that all passengers are unique.
+The ticket includes one or more flights (ticket_flights). Several flights may be included in the ticket in cases where there is no direct flight connecting the points of departure and destination (flight with transfers), or when the ticket is taken “there and back”. There is no hard limit in the data schema, but it is assumed that all tickets in the same booking have the same set of flights.
+Each flight (flights) goes from one airport (airports) to another. Flights with the same number have the same origin and destination, but will differ in departure date.
+At check-in, the passenger is issued a boarding pass (boarding_passes), which indicates the seat on the plane. A passenger can only check-in for the flight that he has on the ticket. The combination of flight and seat must be unique to prevent the issuance of two boarding passes per seat.
+The number of seats (seats) in the aircraft and their distribution by class of service depends on the model of the aircraft (aircrafts) performing the flight. It is assumed that each aircraft model has only one cabin layout. The data schema does not verify that boarding pass seats match those on the plane (this can be done using table triggers or in the app).
 
-ТАБЛИЦА BOOKINGS.AIRCRAFTS
-Каждая модель самолета идентифицируется своим трёхзначным кодом (aircraft_code). Указывается также название модели (model) и максимальная дальность полёта в километрах (range).
+TABLE BOOKINGS.AIRCRAFTS
+Each aircraft model is identified by its three-digit code (aircraft_code). The name of the model (model) and the maximum flight range in kilometers (range) are also indicated.
 
-ТАБЛИЦА BOOKINGS.AIRPORTS
-Аэропорт идентифицируется трехбуквенным кодом (airport_code) и имеет своё имя (airport_name).
-Для города не предусмотрено отдельной сущности, но название (city) указывается и может служить для того, чтобы определить аэропорты одного города. Также указывается широта (latitude), долгота (longitude) и часовой пояс (timezone).
+TABLE BOOKINGS.AIRPORTS
+The airport is identified by a three-letter code (airport_code) and has its own name (airport_name).
+There is no separate entity for the city, but the name (city) is indicated and can be used to identify the airports of one city. The latitude, longitude and timezone are also specified.
 
-ТАБЛИЦА BOOKINGS.BOARDING_PASSES
-При регистрации на рейс, которая возможна за сутки до плановой даты отправления, пассажиру выдаётся посадочный талон. Он идентифицируется так же, как и перелёт — номером билета и номером рейса.
-Посадочным талонам присваиваются последовательные номера (boarding_no) в порядке регистрации пассажиров на рейс (этот номер будет уникальным только в пределах данного рейса). В посадочном талоне указывается номер места (seat_no).
+TABLE BOOKINGS.BOARDING_PASSES
+When checking in for a flight, which is possible one day before the scheduled departure date, the passenger is issued a boarding pass. It is identified in the same way as the flight - by the ticket number and flight number.
+Boarding passes are assigned sequential numbers (boarding_no) in the order in which passengers are checked in for the flight (this number will be unique only within the given flight). The boarding pass indicates the seat number (seat_no).
 
-ТАБЛИЦА BOOKINGS.BOOKINGS
-Пассажир заранее (максимум за месяц до рейса) бронирует билет себе и, возможно, нескольким другим пассажирам (дата бронирования — book_date). Бронирование идентифицируется номером (book_ref, шестизначная комбинация букв и цифр).
-Поле total_amount хранит общую стоимость включённых в бронирование перелетов всех пассажиров.
+TABLE BOOKINGS.BOOKINGS
+A passenger in advance (a maximum of a month before the flight) books a ticket for himself and, possibly, for several other passengers (booking date - book_date). The reservation is identified by a number (book_ref, a six-digit combination of letters and numbers).
+The total_amount field stores the total cost of all passengers included in the booking.
 
-ТАБЛИЦА BOOKINGS.FLIGHTS
-Естественный ключ таблицы рейсов состоит из двух полей — номера рейса (flight_no) и даты отправления (scheduled_departure). Чтобы сделать внешние ключи на эту таблицу компактнее, в качестве первичного используется суррогатный ключ (flight_id).
-Рейс всегда соединяет две точки — аэропорты вылета (departure_airport) и прибытия (arrival_airport). Такое понятие, как «рейс с пересадками» отсутствует: если из одного аэропорта до другого нет прямого рейса, в билет просто включаются несколько необходимых рейсов.
-У каждого рейса есть запланированные дата и время вылета (scheduled_departure) и прибытия (scheduled_arrival). Реальные время вылета (actual_departure) и прибытия (actual_arrival) могут отличаться: обычно не сильно, но иногда и на несколько часов, если рейс задержан.
-
-Статус рейса (status) может принимать одно из следующих значений:
-→ Scheduled
-Рейс доступен для бронирования. Это происходит за месяц до плановой даты вылета; до этого запись о рейсе не существует в базе данных.
-→ On Time
-Рейс доступен для регистрации (за сутки до плановой даты вылета) и не задержан.
-→ Delayed
-Рейс доступен для регистрации (за сутки до плановой даты вылета), но задержан.
-→ Departed
-Самолет уже вылетел и находится в воздухе.
-→ Arrived
-Самолет прибыл в пункт назначения.
-→ Cancelled
-Рейс отменён.
-
-ТАБЛИЦА BOOKINGS.SEATS
-Места определяют схему салона каждой модели. Каждое место определяется своим номером (seat_no) и имеет закреплённый за ним класс обслуживания (fare_conditions) — Economy, Comfort или Business.
-
-ТАБЛИЦА BOOKINGS.TICKET_FLIGHTS
-Перелёт соединяет билет с рейсом и идентифицируется их номерами.
-Для каждого перелета указываются его стоимость (amount) и класс обслуживания (fare_conditions).
-
-ТАБЛИЦА BOOKINGS.TICKETS
-Билет имеет уникальный номер (ticket_no), состоящий из цифр.
-Билет содержит идентификатор пассажира (passenger_id) — номер документа, удостоверяющего личность, — его фамилию и имя (passenger_name) и контактную информацию (contact_data).
-Ни идентификатор пассажира, ни имя не являются постоянными (можно поменять паспорт, можно сменить фамилию), поэтому однозначно найти все билеты одного и того же пассажира невозможно.
-
-4. SQL ЗАПРОСЫ ПРИВЕДЕНЫ В ФАЙЛЕ SQL_quiery.txt
-
-5. ПОЛУЧИВШИЙСЯ ДАТАСЕТ СОХРАНЕН В ФАЙЛ project_4_data.csv
-
-6. ДОПОЛНИТЕЛЬНЫЕ ИССЛЕДОВАНИЯ ПРИВЕДЕНЫ В Jupyter ноутбуке project_4_advanced.ipynb
-
-7. ВЫВОДЫ И РЕКОМЕНДАЦИИ
-
-В результате анализа чистой прибыли 118-ти авиарейсов из Анапы в зимний период 2017 определены наименее прибыльные рейсы. Рассматривались только рейсы, на которых были пассажиры. Все рейсы на самолетах модели "Sukhoi Superjet-100" заменто менее прибыльны, чем все рейсы модели "Boeing 737-300". Отсюда сформулируем 2 рекомендации, в зависимости от политики авиакомпании.
-
-Рекомендация 1:
-Если к сокращению подходить жестко, то нужно упразднить все 59 рейсов на самолетах модели "Sukhoi Superjet-100". Номера этих рейсов flight_id:
-136807, 136642, 136844, 136887, 136922, 136823, 136620, 136937, 136888, 136645, 136678, 136936, 136609, 136767, 136666, 136838, 136660, 136709, 136769, 136861, 136729, 136855, 136632, 136780, 136951, 136754, 136706, 136733, 136612, 136956, 136630, 136802, 136669, 136720, 136571, 136907, 136778, 136672, 136649, 136661, 136819, 136586, 136900, 136605, 136927, 136815, 136827, 136841, 136654, 136953, 136600, 136875, 136871, 136869, 136857, 136755, 136781, 136757, 136758.
-
-Рекомендация 2:
-Если в политике более умеренный подход, то можно сократить определенное количество рейсов модели "Sukhoi Superjet-100" в ранжированном по возрастанию чистой прибыли списке. Например, первые 10 рейсов, чистая прибыль от которых не превышает 30% от максимальной в датасете. Номера этих рейсов flight_id:
-136807, 136642, 136844, 136887, 136922, 136823, 136620, 136937, 136888, 136645
-
-ССЫЛКИ
-Открытый источник данных, используемых в проекте, а также их описание https://postgrespro.ru/docs/postgrespro/10/demodb-bookings
-Памятка по основным функциям SQL https://www.w3schools.com/sql/sql_top.asp
-Инструмент для форматирования и оформления кода SQL https://sqlformat.org
+TABLE BOOKINGS.FLIGHTS
+The natural key of the flights table consists of two fields - the flight number (flight_no) and the departure date (scheduled_departure). To make foreign keys for this table more compact, a surrogate key (flight_id) is used as the primary key.
+A flight always connects two points - the airports of departure (departure_airport) and arrival (arrival_airport). There is no such thing as a “connecting flight”: if there is no direct flight from one airport to another, the ticket pro
